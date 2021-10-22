@@ -1,108 +1,65 @@
 /*
- * i2c_transmitter.c
+ * i2c_receiver 1.c
  *
- * Created: 18-10-2021 14:58:30
- * Author : alok kamal
+ * Created: 18-10-2021 16:01:35
+ * Author : Alok kamal
  */ 
+
 #define F_CPU 8000000UL
 #include <avr/io.h>
 #include "util/delay.h"
 
-void i2c_master_init()
+void i2c_receive_address(unsigned char data)
 {
-	TWBR = 0x62;
-	TWSR = 0x00;
-}
-void i2c_master_start(void)
-{
-	TWCR = (1<<TWINT)|(1<<TWEN)|(1<<TWSTA); // twcr = twcr | ()
-	while((TWCR & (1<<TWINT))!=0);
-	while((TWSR & (0xF8))!=0x08); //--ack
-}
-
-void i2c_stop()
-{
-	TWCR= (1<<TWINT)|(1<<TWEN)|(1<<TWSTO);
-	while((TWCR&(1<<TWSTO))!=0); //----successfully stop-----------// 
+	TWAR = data;
 	
 }
 
-void i2c_send_address(unsigned char address)
-{
-	TWDR = address;
-	TWCR = (1<<TWINT)|(1<<TWEN); // twcr = twcr | (1<<twint)|(1<<twen)
-	while((TWCR &(1<<TWINT))!=0); //----
-	while((TWSR &(0xF8))!=0x18);
-	
-}
-/*
-//-------------for receivinfg the data------------//
-void i2c_receive_address(unsigned char address)
-{
-	TWDR = address;
-	TWCR = (1<<TWINT)|(1<<TWEN);
-	while((TWCR &(1<<TWINT))!=0);
-	while((TWSR & (0xF8))!=0x40);
-}
-
-
-//-----------for receiving the data-----------//
 unsigned char i2c_receive_data(void)
 {
-    	TWCR= (1<<TWINT)|(1<<TWEN);
+	TWCR= (1<<TWINT)|(1<<TWEA)|(1<<TWEN);
+	while((TWCR &(1<<TWINT))!=0);
+	while((TWSR & (0xF8))!=0x80);
+	return TWDR;
+}
+
+/*
+void i2c_send_address_to_master(void)
+{
+	TWDR = 0x03; //------------slave address
+	TWCR|= (1<<TWINT)|(1<<TWEN);
+	while((TWSR & (0xF8))!=0xC0);
+}
+
+void ack_test_for_sending_address_to_master(void)
+{
+	
+	while((TWSR & (0xF8))!=0xA8)
+	{
+		TWCR|= (1<<TWINT)|(1<<TWEA)|(1<<TWEN);
 		while((TWCR &(1<<TWINT))!=0);
-		while((TWSR &(0xF8))!=0x58);
-		return TWDR;
+	}
 }
 */
-void i2c_repeat(void)
+void ack_test_for_receiving_data(void)
 {
-	TWCR= (1<<TWINT)|(1<<TWEN)|(1<<TWSTA);
-	while((TWCR &(1<<TWINT))!=0);
-	while((TWSR &(0xF8))!=0x10);
+	while((TWSR & (0xF8))!=0x60)
+	{
+		TWCR= (1<<TWINT)|(1<<TWEA)|(1<<TWEN);
+		while((TWCR &(1<<TWINT))!=0);
+	}
 }
-void i2c_send_data(unsigned char data)
-{
-	TWDR = data;
-	TWCR= (1<<TWINT)|(1<<TWEN);
-	while((TWCR &(1<<TWINT))!=0);
-	while((TWSR &(0xF8))!=0x28);
-}
+
 int main(void)
 {
-	DDRA = 0xFF;
-	i2c_master_init();
-	while(1)
-	{
-//---------for sending the data to atmega8-------------//	 
-	 i2c_master_start();
-	 _delay_ms(100);
-	 i2c_send_address(0x02);
-	 _delay_ms(400);
-	 i2c_send_data(0xff); //-----------all bit activated----------//
-	 _delay_ms(500);
-	 i2c_stop();
-	 _delay_ms(10);
-//--------------for sending data to atmega32------------//	 
-
-	  i2c_master_start();
-	  _delay_ms(100);
-	  i2c_send_address(0x04);
-	  _delay_ms(400);
-	  i2c_send_data(0x01); //-----------all bit activated----------//
-	  _delay_ms(500);
-	  i2c_stop();
-	  _delay_ms(10);
-	  
-//-----------------sending data to shift register--------------//  
-      i2c_master_start();
-      _delay_ms(100);
-      i2c_send_address(0x40);
-      _delay_ms(400);
-      i2c_send_data(0x07); //-----------all bit activated----------//
-      _delay_ms(500);
-      i2c_stop();
-      _delay_ms(10);	 
-	 
-	}
+   DDRB = 0xFF;   	
+   i2c_receive_address(0x02);
+   while(1)
+   {   ack_test_for_receiving_data();
+	   PORTB = i2c_receive_data();
+	   
+	   //ack_test_for_sending_address_to_master();
+	   //i2c_send_address_to_master();
+	   
+   }
 }
