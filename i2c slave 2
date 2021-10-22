@@ -1,0 +1,41 @@
+/*
+ * i2c_slave2.c
+ *
+ * Created: 18-10-2021 17:08:37
+ * Author : 8840a
+ */ 
+
+#define F_CPU 8000000UL
+#include <avr/io.h>
+#include "util/delay.h"
+
+void i2c_receive_address(unsigned char data)
+{
+	TWAR = data;
+	
+}
+unsigned char i2c_receive_data(void)
+{
+	TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN);
+	while((TWCR &(1<<TWINT))!=0);
+	while((TWSR & (0xF8))!=0x80);
+	return TWDR;
+}
+
+void ack_test(void)
+{
+	while((TWSR & (0xF8))!=0x60)
+	{
+		TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN);
+		while((TWCR &(1<<TWINT))!=0);
+	}
+}
+int main(void)
+{
+   DDRB = 0xff;
+   i2c_receive_address(0x04);
+   while(1)
+   {   ack_test();
+	   PORTB = i2c_receive_data();
+   }
+}
